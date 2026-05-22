@@ -1,0 +1,4 @@
+-r base.txt
+
+# Production-only extras (observability, perf)
+gevent==24.2.1

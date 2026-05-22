@@ -1,0 +1,28 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["migrations", ".venv", "staticfiles"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ"]  # pyflakes, isort, bugbear, pyupgrade, django
+ignore = ["E501"]  # line length handled by black
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+extend-exclude = "migrations"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.dev"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "-q --reuse-db"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+exclude = ["migrations"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.dev"

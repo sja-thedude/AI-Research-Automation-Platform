@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Django
+*.log
+*.sqlite3
+/media/
+/staticfiles/
+local_settings.py
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Docker volumes (if mapped locally)
+/data/
+
+# Vector stores (local chroma)
+/chroma_data/

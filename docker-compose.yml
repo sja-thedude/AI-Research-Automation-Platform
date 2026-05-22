@@ -1,0 +1,112 @@
+# ==========================================================================
+# NeuraForge AI — local / single-host orchestration
+#   web    : ASGI (HTTP + WebSocket) via uvicorn/gunicorn
+#   worker : Celery workers (documents, ai, automation queues)
+#   beat   : Celery beat scheduler (periodic workflows)
+#   db     : PostgreSQL 16 + pgvector
+#   redis  : cache, channel layer, celery broker/result
+#   flower : Celery monitoring UI
+# ==========================================================================
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    args:
+      REQUIREMENTS: requirements/dev.txt
+  image: neuraforge/app:latest
+  env_file: .env
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  volumes:
+    - .:/app
+    - media_data:/app/media
+  entrypoint: ["bash", "docker/entrypoint.sh"]
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-neuraforge}
+      POSTGRES_USER: ${POSTGRES_USER:-neuraforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-neuraforge}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-neuraforge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    <<: *app
+    command:
+      - gunicorn
+      - config.asgi:application
+      - -k
+      - uvicorn.workers.UvicornWorker
+      - --bind
+      - 0.0.0.0:8000
+      - --workers
+      - "3"
+      - --reload
+    environment:
+      RUN_MIGRATIONS: "true"
+    ports:
+      - "8000:8000"
+
+  worker:
+    <<: *app
+    command:
+      - celery
+      - -A
+      - config
+      - worker
+      - -l
+      - info
+      - -Q
+      - documents,ai,automation,celery
+      - --concurrency
+      - "4"
+    environment:
+      RUN_MIGRATIONS: "false"
+
+  beat:
+    <<: *app
+    command:
+      - celery
+      - -A
+      - config
+      - beat
+      - -l
+      - info
+      - --scheduler
+      - django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      RUN_MIGRATIONS: "false"
+
+  flower:
+    <<: *app
+    command: ["celery", "-A", "config", "flower", "--port=5555"]
+    environment:
+      RUN_MIGRATIONS: "false"
+    ports:
+      - "5555:5555"
+
+volumes:
+  pg_data:
+  media_data:
